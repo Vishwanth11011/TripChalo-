@@ -1,0 +1,27 @@
+# --- OS / System Files ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Python (Backend) ---
+backend/__pycache__/
+*.py[cod]
+*$py.class
+backend/venv/
+backend/.venv/
+*.env
+
+# --- Database (CRITICAL) ---
+# Ignore the actual database file so you don't push user data
+*.db
+*.sqlite3
+backend/tripchalo.db
+
+# --- Node / React (Frontend) ---
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*

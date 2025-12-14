@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FORCE DARK MODE ON NATIVE INPUTS */
+:root {
+  color-scheme: dark; /* Makes the calendar popup dark grey instead of white */
+}
+
+/* MAKE THE CALENDAR ICON WHITE */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1); /* Inverts black icon to white */
+    opacity: 0.8;
+    cursor: pointer;
+}
