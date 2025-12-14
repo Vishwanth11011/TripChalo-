@@ -1,7 +1,7 @@
 import google.generativeai as genai
 
 # PASTE YOUR KEY HERE
-genai.configure(api_key="AIzaSyDvvMwyF7bbg99R3_3glV5ewON_6FVDjRM") 
+genai.configure(api_key="Your_API_KEY_here") 
 
 print("Checking available models...")
 try:
