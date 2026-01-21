@@ -1,9 +1,10 @@
 import google.generativeai as genai
 import os
 import json
+import re
 
 # Configure the API Key
-genai.configure(api_key="YOUR_API_KEY_HERE") 
+genai.configure(api_key="AIzaSyC9i9WN5Mtw8dTRAti2o9gpAvMacw_bElg") 
 
 def get_trip_recommendations(group_preferences_list):
     # 1. Serialize Data
@@ -76,3 +77,62 @@ def get_trip_recommendations(group_preferences_list):
     except Exception as e:
         print(f"AI Error: {e}")
         return None
+    
+def smart_trip_chat(trip_data, participants, user_query):
+    """
+    A local, context-aware chatbot that answers based on the Trip DB data.
+    No API Keys required.
+    """
+    query = user_query.lower()
+    
+    # Parse Itinerary if it's a string
+    try:
+        if isinstance(trip_data.get('itinerary'), str):
+            itinerary = json.loads(trip_data['itinerary'])
+        else:
+            itinerary = trip_data.get('itinerary', [])
+    except:
+        itinerary = []
+
+    # --- INTELLIGENCE RULE 1: DAY-SPECIFIC QUESTIONS ---
+    # Detects: "What is the plan for Day 2?" or "Day 1 details"
+    day_match = re.search(r"day\s*(\d+)", query)
+    if day_match:
+        day_num = int(day_match.group(1))
+        
+        # Search the itinerary list for this day
+        for day_plan in itinerary:
+            # We assume the AI generated itinerary has keys like "Day" or "day"
+            # Adjust this matching based on how your JSON is actually structured
+            if str(day_plan.get("day", "")).lower() == str(day_num) or \
+               f"day {day_num}" in str(day_plan.get("day", "")).lower():
+                
+                activities = day_plan.get("activities", [])
+                formatted_activities = "\n".join([f"- {act}" for act in activities]) if isinstance(activities, list) else str(activities)
+                
+                return f"📅 **Day {day_num} Plan:**\n{formatted_activities}\n\n*Budget used: {day_plan.get('cost_estimate', 'N/A')}*"
+
+        return f"I checked the schedule, but I couldn't find specific details for **Day {day_num}**."
+
+    # --- INTELLIGENCE RULE 2: BUDGET / COST ---
+    if any(x in query for x in ["cost", "price", "budget", "expensive", "money", "how much"]):
+        total_cost = trip_data.get('estimated_cost', 'Not specified')
+        return f"💰 **Financial Overview:**\nThe estimated total cost for this trip is **{total_cost}** per person.\nThis fits within the group's budget range of {trip_data.get('budget_range', 'Unknown')}."
+
+    # --- INTELLIGENCE RULE 3: LOCATION / DESTINATION ---
+    if any(x in query for x in ["where", "location", "destination", "city", "place"]):
+        return f"📍 **Destination:**\nWe are going to **{trip_data.get('location', 'Unknown Location')}**! Get ready for {trip_data.get('vibe', 'a great vibe')}."
+
+    # --- INTELLIGENCE RULE 4: PARTICIPANTS (Who is coming?) ---
+    if any(x in query for x in ["who", "people", "participants", "friends", "coming"]):
+        names = [p['name'] for p in participants]
+        return f"👥 **The Squad:**\nThere are {len(names)} people confirmed: {', '.join(names)}."
+
+    # --- FALLBACK (Generic Help) ---
+    return (
+        "I am your Trip Assistant! 🤖\n"
+        "I can answer questions like:\n"
+        "• 'What is the plan for Day 1?'\n"
+        "• 'Who is coming?'\n"
+        "• 'What is the total budget?'"
+    )

@@ -5,6 +5,7 @@ import CreateTrip from './pages/CreateTrip';
 import JoinTrip from './pages/JoinTrip';
 import TripPage from './pages/TripPage'; // <--- 1. MAKE SURE THIS IMPORT EXISTS
 import ItineraryPage from './pages/ItineraryPage';
+import ConfirmedTrip from './pages/ConfirmedTrip';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/trip/:tripId" element={<TripPage />} />  {/* <--- 2. THIS LINE IS CRITICAL */}
 
         <Route path="/trip/:tripId/itinerary" element={<ItineraryPage />} />
+        <Route path="/trip/:tripId/confirmed" element={<ConfirmedTrip />} />
       </Routes>
     </Router>
   );

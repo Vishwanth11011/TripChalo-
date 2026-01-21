@@ -10,6 +10,7 @@ from datetime import timedelta
 from collections import Counter
 import recommendation_service # Import the AI file
 import json
+from pydantic import BaseModel
 
 # Create Database Tables
 Base.metadata.create_all(bind=engine)
@@ -19,7 +20,7 @@ app = FastAPI()
 # CORS Setup (Allows Frontend to talk to Backend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["*"],  # Change this to "*" to allow any URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -410,3 +411,86 @@ def finalize_trip_option(trip_id: int, user_id: int, option_id: int, db: Session
     trip.final_chosen_option = option_id
     db.commit()
     return {"status": "finalized"}
+
+
+# --- 1. GET FULL TRIP DETAILS (For the Page) ---
+@app.get("/trips/{trip_id}/confirmed-details")
+def get_confirmed_trip_details(trip_id: int, db: Session = Depends(get_db)):
+    # Fetch Trip
+    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if not trip or not trip.is_trip_confirmed:
+        raise HTTPException(status_code=404, detail="Trip not found or not confirmed yet")
+
+    # Fetch Participants
+    participants = db.query(models.TripParticipant).filter(models.TripParticipant.trip_id == trip_id).all()
+    participant_list = []
+    for p in participants:
+        u = db.query(models.User).filter(models.User.id == p.user_id).first()
+        if u:
+            participant_list.append({"name": f"{u.first_name} {u.last_name}", "id": u.id})
+
+    # Parse the finalized itinerary data
+    # (Assuming we stored the chosen option in 'final_chosen_option' or specific fields)
+    # For this implementation, let's assume 'itinerary_data' holds the full JSON of all options
+    # and we need to grab the one that matches 'final_chosen_option'.
+    
+    import json
+    final_itinerary = {}
+    location_name = "Unknown"
+    
+    if trip.itinerary_data and trip.final_chosen_option:
+        try:
+            all_data = json.loads(trip.itinerary_data)
+            # Find the option with the matching ID
+            chosen = next((opt for opt in all_data.get("options", []) if opt["id"] == trip.final_chosen_option), None)
+            if chosen:
+                final_itinerary = chosen.get("itinerary", [])
+                location_name = chosen.get("location", "Unknown")
+        except:
+            pass
+
+    return {
+        "id": trip.id,
+        "trip_name": trip.trip_name,
+        "trip_code": trip.trip_code,
+        "location": location_name,
+        "itinerary": final_itinerary,
+        "participants": participant_list,
+        "start_date": participants[0].start_date if participants else "", # Rough estimate
+    }
+
+
+# --- 2. CHAT BOT ENDPOINT ---
+class ChatRequest(BaseModel):
+    message: str
+
+@app.post("/trips/{trip_id}/chat")
+def chat_with_trip_bot(trip_id: int, chat_req: ChatRequest, db: Session = Depends(get_db)):
+    # 1. Fetch Trip Data again to give context to the bot
+    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+        
+    # 2. Reconstruct the context dictionary
+    import json
+    trip_context = {}
+    if trip.itinerary_data and trip.final_chosen_option:
+        try:
+            all_data = json.loads(trip.itinerary_data)
+            chosen = next((opt for opt in all_data.get("options", []) if opt["id"] == trip.final_chosen_option), None)
+            if chosen:
+                trip_context = chosen # The whole object (location, cost, itinerary)
+        except:
+            pass
+
+    # 3. Fetch Participants for context
+    participants = db.query(models.TripParticipant).filter(models.TripParticipant.trip_id == trip_id).all()
+    people_context = []
+    for p in participants:
+        u = db.query(models.User).filter(models.User.id == p.user_id).first()
+        if u: people_context.append({"name": u.first_name})
+
+    # 4. Call the Python Logic
+    bot_reply = recommendation_service.smart_trip_chat(trip_context, people_context, chat_req.message)
+    
+    return {"response": bot_reply}
