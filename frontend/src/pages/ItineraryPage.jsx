@@ -159,8 +159,8 @@ export default function ItineraryPage() {
                                     )}
                                 </div>
                                 
-                                {/* Finalize Button (Leader Only) */}
-                                {!finalChoice && (
+                                {/* Finalize Button (Leader Only) - FIX: Added isLeader check */}
+                                {!finalChoice && isLeader && (
                                     <button 
                                         onClick={() => handleFinalize(option.id)}
                                         className="w-full border border-green-900 text-green-600 hover:bg-green-900/20 py-3 rounded-lg font-bold text-sm transition"

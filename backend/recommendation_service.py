@@ -4,78 +4,90 @@ import json
 import re
 
 # Configure the API Key
-genai.configure(api_key="AIzaSyC9i9WN5Mtw8dTRAti2o9gpAvMacw_bElg") 
+# Make sure your .env file or environment variable is set correctly
+# Or hardcode it temporarily for testing: genai.configure(api_key="YOUR_KEY_HERE")
+api_key = "AIzaSyC9i9WN5Mtw8dTRAti2o9gpAvMacw_bElg" 
+
+if not api_key or api_key == "AIzaSy_YOUR_REAL_API_KEY_HERE":
+    print("⚠️ WARNING: You forgot to paste the actual API key!")
+else:
+    genai.configure(api_key=api_key) 
 
 def get_trip_recommendations(group_preferences_list):
+    print("DEBUG: Starting AI Generation...") # Debug print
+
     # 1. Serialize Data
     prompt_data = json.dumps(group_preferences_list, indent=2)
 
-    # 2. Advanced Prompt Engineering
+    # 2. Advanced Prompt
     full_prompt = f"""
     SYSTEM INSTRUCTION:
     You are an expert AI Travel Agent specializing in personalized group travel.
     
     YOUR GOAL:
-    Analyze the provided USER DATA and generate exactly TWO distinct trip itineraries (Option A and Option B).
-
-    ANALYSIS GUIDELINES:
-    1. **Origin Analysis**: Look at the 'home_town' of users. If the majority are from a specific country (e.g., India), suggest destinations WITHIN that country unless they explicitly asked for international.
-    2. **Diversity**: The destination MUST be different from their home towns. Give them a "vacation vibe" change.
-    3. **Demographics**: 
-       - Check 'age': If young (18-25), focus on budget, energy, and nightlife. If mixed/older, focus on comfort and accessibility.
-       - Check 'gender': Ensure the destination is safe and comfortable for the gender composition of the group.
-    4. **Underrated Gems**: Do not just suggest the most obvious tourist trap (e.g., instead of just Goa, suggest Gokarna or Varkala). Comb for budget-friendly but high-value experiences.
+    Analyze the provided USER DATA and generate exactly TWO distinct trip itineraries.
     
-    THE TWO OPTIONS:
-    - **Option 1 (The Crowd Pleaser)**: A balanced choice that statistically fits the majority of preferences (budget, tags, dates).
-    - **Option 2 (The Underrated Wildcard)**: A unique, less commercialized gem that fits the budget but offers a distinct experience.
-
     OUTPUT FORMAT:
-    Return ONLY valid JSON. No markdown.
+    Return ONLY valid JSON. Do not include markdown formatting like ```json or ```.
     
     JSON Schema:
     {{
-      "analysis_summary": "Brief text explaining how you considered their age, gender, and origins...",
+      "analysis_summary": "Brief summary...",
       "options": [
         {{
           "id": 1,
-          "title": "Name of the Trip (e.g., 'Hidden Hills of Coorg')",
-          "location": "City, State/Country",
-          "total_estimated_cost": "₹15,000 per person",
-          "vibe_match": "Nature & Chill",
-          "why_its_perfect": "Explanation relative to their demographics...",
+          "title": "Trip Title",
+          "location": "City, Country",
+          "total_estimated_cost": "Cost string",
+          "vibe_match": "Vibe string",
+          "why_its_perfect": "Reasoning...",
           "itinerary": [
             {{ "day": 1, "activity": "..." }},
-            {{ "day": 2, "activity": "..." }},
-            {{ "day": 3, "activity": "..." }}
+            {{ "day": 2, "activity": "..." }}
           ]
         }},
         {{
           "id": 2,
-          "title": "Title for Option 2",
+          "title": "Trip Title 2",
           "location": "Location 2",
           "total_estimated_cost": "Cost 2",
           "vibe_match": "Vibe 2",
-          "why_its_perfect": "Explanation...",
-          "itinerary": [ ... ]
+          "why_its_perfect": "Reasoning...",
+          "itinerary": []
         }}
       ]
     }}
 
-    USER DATA TO PROCESS:
+    USER DATA:
     {prompt_data}
     """
 
-    # 3. Call Gemini
-    model = genai.GenerativeModel("gemini-2.5-flash") # Using latest fast model
+    # FIX 1: Use the correct model name
+    model = genai.GenerativeModel("gemini-1.5-flash") 
     
     try:
         response = model.generate_content(full_prompt)
-        # Clean potential markdown formatting
-        clean_text = response.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean_text)
+        raw_text = response.text
+        
+        # FIX 2: Advanced Regex JSON Extraction
+        # This searches for the content between the first '{' and the last '}'
+        # It fixes issues where AI says "Here is the JSON: ```json ... ```"
+        json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        
+        if json_match:
+            clean_text = json_match.group(0)
+            return json.loads(clean_text)
+        else:
+            # Fallback if regex fails
+            clean_text = raw_text.replace("```json", "").replace("```", "").strip()
+            return json.loads(clean_text)
+
     except Exception as e:
-        print(f"AI Error: {e}")
+        # FIX 3: Detailed Error Log
+        print(f"❌ AI GENERATION ERROR: {e}")
+        # If possible, print the raw text to see what went wrong
+        try: print(f"Raw Response causing error: {response.text}")
+        except: pass
         return None
     
 def smart_trip_chat(trip_data, participants, user_query):
@@ -95,44 +107,42 @@ def smart_trip_chat(trip_data, participants, user_query):
         itinerary = []
 
     # --- INTELLIGENCE RULE 1: DAY-SPECIFIC QUESTIONS ---
-    # Detects: "What is the plan for Day 2?" or "Day 1 details"
     day_match = re.search(r"day\s*(\d+)", query)
     if day_match:
         day_num = int(day_match.group(1))
         
-        # Search the itinerary list for this day
         for day_plan in itinerary:
-            # We assume the AI generated itinerary has keys like "Day" or "day"
-            # Adjust this matching based on how your JSON is actually structured
-            if str(day_plan.get("day", "")).lower() == str(day_num) or \
-               f"day {day_num}" in str(day_plan.get("day", "")).lower():
+            # Flexible matching for "Day 1", "day 1", "1"
+            d_val = str(day_plan.get("day", "")).lower()
+            if d_val == str(day_num) or f"day {day_num}" in d_val:
                 
                 activities = day_plan.get("activities", [])
-                formatted_activities = "\n".join([f"- {act}" for act in activities]) if isinstance(activities, list) else str(activities)
+                # Handle if activity is list or string
+                if isinstance(activities, list):
+                    formatted_activities = "\n".join([f"- {act}" for act in activities])
+                else:
+                    formatted_activities = str(activities)
                 
-                return f"📅 **Day {day_num} Plan:**\n{formatted_activities}\n\n*Budget used: {day_plan.get('cost_estimate', 'N/A')}*"
+                return f"📅 **Day {day_num} Plan:**\n{formatted_activities}"
 
         return f"I checked the schedule, but I couldn't find specific details for **Day {day_num}**."
 
     # --- INTELLIGENCE RULE 2: BUDGET / COST ---
     if any(x in query for x in ["cost", "price", "budget", "expensive", "money", "how much"]):
         total_cost = trip_data.get('estimated_cost', 'Not specified')
-        return f"💰 **Financial Overview:**\nThe estimated total cost for this trip is **{total_cost}** per person.\nThis fits within the group's budget range of {trip_data.get('budget_range', 'Unknown')}."
+        return f"💰 **Financial Overview:**\nThe estimated total cost is **{total_cost}**."
 
-    # --- INTELLIGENCE RULE 3: LOCATION / DESTINATION ---
+    # --- INTELLIGENCE RULE 3: LOCATION ---
     if any(x in query for x in ["where", "location", "destination", "city", "place"]):
-        return f"📍 **Destination:**\nWe are going to **{trip_data.get('location', 'Unknown Location')}**! Get ready for {trip_data.get('vibe', 'a great vibe')}."
+        return f"📍 **Destination:**\nWe are going to **{trip_data.get('location', 'Unknown Location')}**!"
 
-    # --- INTELLIGENCE RULE 4: PARTICIPANTS (Who is coming?) ---
+    # --- INTELLIGENCE RULE 4: PARTICIPANTS ---
     if any(x in query for x in ["who", "people", "participants", "friends", "coming"]):
         names = [p['name'] for p in participants]
-        return f"👥 **The Squad:**\nThere are {len(names)} people confirmed: {', '.join(names)}."
+        return f"👥 **The Squad:**\nConfirmed: {', '.join(names)}."
 
-    # --- FALLBACK (Generic Help) ---
+    # --- FALLBACK ---
     return (
         "I am your Trip Assistant! 🤖\n"
-        "I can answer questions like:\n"
-        "• 'What is the plan for Day 1?'\n"
-        "• 'Who is coming?'\n"
-        "• 'What is the total budget?'"
+        "Ask me about the Plan, Budget, or Who is coming."
     )
