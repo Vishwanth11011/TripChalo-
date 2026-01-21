@@ -6,7 +6,6 @@ genai.configure(api_key="Your_API_KEY_here")
 print("Checking available models...")
 try:
     for m in genai.list_models():
-        # We only care about models that can generate content
         if 'generateContent' in m.supported_generation_methods:
             print(f"- {m.name}")
 except Exception as e:

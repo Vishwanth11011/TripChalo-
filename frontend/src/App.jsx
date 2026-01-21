@@ -20,7 +20,7 @@ function App() {
         <Route path="/join-trip" element={<JoinTrip />} />
         
         {/* Dynamic Trip Page (The one that was missing) */}
-        <Route path="/trip/:tripId" element={<TripPage />} />  {/* <--- 2. THIS LINE IS CRITICAL */}
+        <Route path="/trip/:tripId" element={<TripPage />} /> 
 
         <Route path="/trip/:tripId/itinerary" element={<ItineraryPage />} />
         <Route path="/trip/:tripId/confirmed" element={<ConfirmedTrip />} />

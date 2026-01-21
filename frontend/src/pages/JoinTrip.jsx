@@ -7,7 +7,6 @@ import api from '../api';
 const TAGS = ["Adventure", "Relaxation", "Nature", "Culture", "Food", "Nightlife", "Shopping", "History"];
 const BUDGETS = ["₹5,000 - ₹10,000", "₹10,000 - ₹20,000", "₹20,000 - ₹50,000", "₹50,000+"];
 
-// Use a slightly different but matching image for variety
 const BG_IMAGE = "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2144&auto=format&fit=crop";
 
 export default function JoinTrip({ onOpenAuth }) {
@@ -21,7 +20,7 @@ export default function JoinTrip({ onOpenAuth }) {
     home_town: '',
     start_date: '',
     end_date: '',
-    budget_range: BUDGETS[0], // FIX: Default to Rupee value
+    budget_range: BUDGETS[0],
     preference_tags: []
   });
 
