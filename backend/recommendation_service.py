@@ -6,12 +6,12 @@ import re
 # Configure the API Key
 # Make sure your .env file or environment variable is set correctly
 # Or hardcode it temporarily for testing: genai.configure(api_key="YOUR_KEY_HERE")
-api_key = "AIzaSyC9i9WN5Mtw8dTRAti2o9gpAvMacw_bElg" 
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-if not api_key or api_key == "AIzaSy_YOUR_REAL_API_KEY_HERE":
-    print("⚠️ WARNING: You forgot to paste the actual API key!")
-else:
-    genai.configure(api_key=api_key) 
+# if not api_key or api_key == "AIzaSy_YOUR_REAL_API_KEY_HERE":
+#     print("⚠️ WARNING: You forgot to paste the actual API key!")
+# else:
+#     genai.configure(api_key=api_key) 
 
 def get_trip_recommendations(group_preferences_list):
     print("DEBUG: Starting AI Generation...") # Debug print
@@ -63,7 +63,7 @@ def get_trip_recommendations(group_preferences_list):
     """
 
     # FIX 1: Use the correct model name
-    model = genai.GenerativeModel("gemini-1.5-flash") 
+    model = genai.GenerativeModel("gemini-2.5-flash") 
     
     try:
         response = model.generate_content(full_prompt)
