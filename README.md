@@ -1,9 +1,3 @@
-Here is a professional, ready-to-use **README.md** file for your **TripChalo** project.
-
-You can copy this directly into a file named `README.md` in the root of your GitHub repository.
-
----
-
 # 🌍 TripChalo! - AI-Powered Group Trip Planner
 
 **TripChalo** is a full-stack web application designed to solve the chaos of group travel planning. It allows friends to join a trip, vote on budgets and dates, and uses **Generative AI (Google Gemini)** to create two distinct, conflict-free itinerary options: a "Crowd Pleaser" and an "Underrated Wildcard."
